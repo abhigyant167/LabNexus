@@ -1,0 +1,13 @@
+# The owner's key never leaves the machine: it is read by admin/server.js at
+# startup and used only server-side. Never commit it or paste it in chat.
+.env
+admin/.env
+
+node_modules/
+pc-agent/config.json
+pc-agent/ready/
+pc-agent/data/
+admin/data/
+_old/
+pptxwork/
+*.zip

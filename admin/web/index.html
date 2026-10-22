@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LabNexus — Admin Control</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>LabNexus</h1>
+    <span class="sub">LAN lab control</span>
+  </div>
+  <div id="connBadge" class="badge">connecting…</div>
+</header>
+
+<main>
+  <!-- What the timetable says right now. Hidden until a timetable exists. -->
+  <section id="lab-status" class="lab-status hidden" aria-live="polite">
+    <span id="ls-dot" class="ls-dot"></span>
+    <div class="ls-body">
+      <span id="ls-kicker" class="ls-kicker">Timetable</span>
+      <b id="ls-title" class="ls-title"></b>
+      <span id="ls-sub" class="ls-sub"></span>
+    </div>
+    <button id="ls-open" class="btn">Open timetable</button>
+  </section>
+
+  <section class="cards">
+    <div class="card"><span class="k">Total</span><span class="v" id="c-total">0</span></div>
+    <div class="card"><span class="k">Online</span><span class="v" id="c-online">0</span></div>
+    <div class="card locked"><span class="k">Locked</span><span class="v" id="c-locked">0</span></div>
+    <div class="card unlocked"><span class="k">Unlocked</span><span class="v" id="c-unlocked">0</span></div>
+    <div class="card unknown"><span class="k">Unknown</span><span class="v" id="c-unknown">0</span></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Lab floor</h2>
+      <span class="hint">click a PC to act on it</span>
+    </div>
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <div class="two-col">
+    <section class="panel">
+      <div class="panel-head">
+        <h2 id="sel-title">Selected PC</h2>
+        <span id="sel-state" class="state-chip">—</span>
+      </div>
+      <div id="sel-info" class="sel-info">No PC selected.</div>
+      <div class="actions">
+        <button id="btn-unlock" class="btn ok">Unlock 30 min</button>
+        <button id="btn-lock" class="btn warn">Lock</button>
+        <button id="btn-sleep" class="btn warn">Sleep</button>
+        <button id="btn-wake" class="btn">Wake</button>
+        <button id="btn-msg" class="btn">Message</button>
+        <button id="btn-reboot" class="btn danger">Reboot (10s)</button>
+        <button id="btn-forget" class="btn danger" title="Remove this seat from the dashboard (decommissioned or renumbered PC)">Forget</button>
+      </div>
+      <div id="msg-form" class="msg-form hidden">
+        <input id="msg-text" type="text" placeholder="Message shown on the PC overlay…" maxlength="200">
+        <button id="msg-send" class="btn">Send</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Audit log</h2><span class="hint">latest 100</span></div>
+      <div id="audit" class="audit"><div class="row muted">Loading…</div></div>
+    </section>
+  </div>
+
+</main>
+
+<!-- Right-edge tab: the timetable lives in its own guided sidebar -->
+<button id="tt-tab" class="side-tab" aria-controls="tt-drawer" aria-expanded="false">
+  <span class="side-tab-glyph" aria-hidden="true">▤</span>
+  <span class="side-tab-label">Timetable</span>
+  <span id="tt-tab-dot" class="side-tab-dot" hidden></span>
+</button>
+
+<div id="tt-drawer" class="drawer" aria-hidden="true">
+  <div class="drawer-scrim" id="tt-scrim"></div>
+  <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="wz-title">
+    <header class="drawer-head">
+      <div>
+        <p class="drawer-kicker">Timetable setup</p>
+        <h2 id="wz-title">Guided walkthrough</h2>
+      </div>
+      <button id="tt-close" class="icon-btn" aria-label="Close timetable sidebar">✕</button>
+    </header>
+
+    <ol class="stepper" id="wz-stepper" aria-label="Setup progress">
+      <li data-step="1"><span>1</span><em>Picture</em></li>
+      <li data-step="2"><span>2</span><em>Department</em></li>
+      <li data-step="3"><span>3</span><em>Lab hours</em></li>
+      <li data-step="4"><span>4</span><em>Review</em></li>
+    </ol>
+
+    <div class="drawer-body" id="wz-body">
+      <!-- not signed in -->
+      <section id="wz-auth" class="wz-step hidden" data-step="0">
+        <h3 class="wz-h">Log in to set up the timetable</h3>
+        <p class="wz-p">The timetable controls the lab locks, so it is admin-only. Log in and this
+        sidebar picks up exactly where you left off.</p>
+        <button id="wz-auth-go" class="btn ok">Log in</button>
+      </section>
+
+      <!-- 1 - upload -->
+      <section class="wz-step" data-step="1">
+        <h3 class="wz-h">Add the official timetable</h3>
+        <p class="wz-p">Keep the college timetable picture here as the reference you can check at any
+        time. Take two minutes with it now: the next step files it, and the step after that turns it
+        into the lab hours this system actually follows.</p>
+
+        <div id="wz-drop" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop a timetable picture">
+          <input id="wz-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          <span class="dz-glyph" aria-hidden="true">⇪</span>
+          <strong>Drop the timetable picture here</strong>
+          <span class="dz-sub">one picture per class · PNG, JPG, WEBP or GIF · up to 8 MB</span>
+        </div>
+
+        <div id="wz-gallery" class="wz-gallery hidden" aria-label="Timetable pictures"></div>
+
+        <div id="wz-extract-bar">
+          <span class="wz-mini-note" id="wz-extract-note">Upload a picture for every class, rename each to that class, then read its lab periods out — you confirm everything before it is used. Needs the AI key in .env.</span>
+        </div>
+        <p id="wz-upload-msg" class="wz-msg" role="status" aria-live="polite"></p>
+        <p class="wz-note">No picture handy? Continue — the picture is optional, the lab hours are not.</p>
+      </section>
+
+      <!-- 2 - department -->
+      <section class="wz-step hidden" data-step="2">
+        <h3 class="wz-h">Which department owns this lab?</h3>
+        <p class="wz-p">Pick the department that runs this lab. Every notice and report is filed under it.
+        Sections from other departments can still use the lab — just name them in the lab hours.</p>
+        <div id="wz-depts" class="dept-grid"></div>
+        <p id="wz-dept-hint" class="wz-msg"></p>
+      </section>
+
+      <!-- 3 - grid -->
+      <section class="wz-step hidden" data-step="3">
+        <h3 class="wz-h">Confirm the weekly lab hours</h3>
+        <p class="wz-p">Copy each lab period from the picture and name it after the class that owns it
+        (for example <em>DBMS Lab — CSE 3A</em>). Two sections in the room at the same time?
+        Use <b>⧉</b> on that row — it copies the same day and hours and asks only for the second name.</p>
+
+        <div class="wz-tools">
+          <button id="wz-peek" class="btn ghost" type="button">👁 Timetable picture</button>
+          <button id="wz-extract-grid" class="btn ghost" type="button" title="Fill the grid from the picture, then you confirm">✨ Extract from picture</button>
+          <span id="wz-summary" class="wz-summary"></span>
+        </div>
+
+        <div id="wz-rows" class="wz-rows"></div>
+        <div class="wz-row-actions">
+          <button id="wz-add" class="btn">+ Add period</button>
+          <button id="wz-clear" class="btn ghost">Remove all</button>
+        </div>
+        <div id="wz-grid-msg" class="wz-msg" role="alert"></div>
+        <p id="wz-empty-hint" class="wz-hint hidden">Add at least one period — a timetable with no
+        lab hours keeps the whole lab locked.</p>
+      </section>
+
+      <!-- 4 - processing + review -->
+      <section class="wz-step hidden" data-step="4">
+        <div id="wz-processing" class="processing">
+          <div class="spinner" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h3 class="wz-h">Processing your timetable…</h3>
+          <ul class="progress-list" id="wz-progress"></ul>
+        </div>
+        <div id="wz-result" class="wz-result hidden"></div>
+
+        <div id="wz-live" class="wz-live">
+          <div class="wz-live-head">
+            <span class="section-label">During a period</span>
+            <span id="wz-live-mode" class="wz-mode">—</span>
+          </div>
+          <p class="wz-p wz-p-tight">Seats stay locked until you take attendance. Enter how many
+          students are in the room and the system unlocks exactly that many.</p>
+
+          <div class="wz-switch" role="tablist" aria-label="How to take attendance">
+            <button id="wz-mode-count" class="wz-switch-btn active" role="tab" aria-selected="true">Head count</button>
+            <button id="wz-mode-names" class="wz-switch-btn" role="tab" aria-selected="false">Roll numbers</button>
+          </div>
+
+          <div id="wz-count-box" class="wz-live-row">
+            <input id="wz-present" type="number" min="1" max="300" placeholder="Students present, e.g. 12">
+          </div>
+          <div id="wz-names-box" class="wz-live-row hidden">
+            <textarea id="wz-names" rows="3" placeholder="One roll number per line
+23CS001
+23CS002
+23CS003"></textarea>
+          </div>
+          <button id="wz-allocate" class="btn ok">Take attendance</button>
+
+          <div class="actions wz-override-actions">
+            <button id="wz-override" class="btn">Override 30 min</button>
+            <button id="wz-override-end" class="btn ghost">End override</button>
+          </div>
+          <div id="wz-live-msg" class="wz-msg" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="drawer-foot">
+      <button id="wz-back" class="btn ghost">Back</button>
+      <div class="foot-right">
+        <button id="wz-skip" class="btn ghost hidden">Skip</button>
+        <button id="wz-next" class="btn ok">Continue</button>
+      </div>
+    </footer>
+  </aside>
+</div>
+
+<!-- full-size timetable picture -->
+<div id="wz-lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Timetable picture">
+  <button id="wz-lightbox-close" class="icon-btn lightbox-close" aria-label="Close picture">✕</button>
+  <img id="wz-lightbox-img" alt="Timetable picture, full size">
+  <p class="lightbox-hint">Ctrl + scroll to zoom</p>
+</div>
+
+<!-- lab periods the AI read out of the timetable picture -->
+<div id="wz-extract-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Lab periods found in the picture">
+  <div class="modal-box extract-box">
+    <h3>Lab periods found in the picture</h3>
+    <p id="wz-extract-meta" class="muted"></p>
+    <div id="wz-extract-list" class="extract-list"></div>
+    <p id="wz-extract-notes" class="muted"></p>
+    <p class="muted">Check this list before using it — your confirmed grid is what the lab actually follows.</p>
+    <div class="modal-actions">
+      <button id="wz-extract-replace" class="btn danger">Replace my grid</button>
+      <button id="wz-extract-add" class="btn ok">Add to my grid</button>
+      <button id="wz-extract-cancel" class="btn">Discard</button>
+    </div>
+  </div>
+</div>
+
+<div id="login" class="modal">
+  <div class="modal-box">
+    <h3>Admin login</h3>
+    <p class="muted">Enter the admin password to control the lab.</p>
+    <div class="unlock-form">
+      <input id="login-pass" type="password" placeholder="Password" autofocus>
+      <div id="login-err" class="muted" style="color:var(--danger)"></div>
+    </div>
+    <div class="modal-actions">
+      <button id="login-go" class="btn ok">Log in</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm" class="modal hidden">
+  <div class="modal-box">
+    <h3 id="confirm-title">Confirm</h3>
+    <p id="confirm-text"></p>
+    <div class="modal-actions">
+      <button id="confirm-yes" class="btn danger">Confirm</button>
+      <button id="confirm-no" class="btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="wizard.js"></script>
+</body>
+</html>

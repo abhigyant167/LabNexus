@@ -1,0 +1,9 @@
+{
+  "name": "labnexus-pc-agent",
+  "version": "1.0.0",
+  "description": "LabNexus lab PC agent: outbound polling, auto-discovery, lock overlay",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js"
+  }
+}
