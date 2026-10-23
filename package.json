@@ -1,0 +1,19 @@
+{
+  "name": "labnexus",
+  "version": "1.0.0",
+  "description": "LAN lab control: admin dashboard, lab PC agents, AI timetable extraction",
+  "private": true,
+  "main": "admin/server.js",
+  "scripts": {
+    "start": "node admin/server.js",
+    "build": "node --check admin/server.js && node --check admin/launcher.js && node --check admin/web/app.js && node --check admin/web/wizard.js && node --check pc-agent/agent.js",
+    "test": "node tools/integration-test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
