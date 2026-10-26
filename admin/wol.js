@@ -40,19 +40,30 @@ function sendWol(mac, { ports = [9, 7], attemptsPerPort = 3 } = {}) {
   const results = [];
   let planned = 0;
   const sock = dgram.createSocket({ type: "udp4" });
-  sock.bind(() => {
-    try { sock.setBroadcast(true); } catch (_) {}
-    for (const port of ports) {
-      for (let attempt = 0; attempt < attemptsPerPort; attempt++) {
-        for (const addr of targets) {
-          planned++;
-          sock.send(pkt, port, addr, (err) => {
-            results.push({ port, addr, attempt, ok: !err, error: err?.message });
-          });
+  sock.on("error", (err) => {
+    results.push({ port: 0, addr: "broadcast", attempt: 0, ok: false, error: err?.message });
+  });
+  try {
+    sock.bind(() => {
+      try { sock.setBroadcast(true); } catch (_) {}
+      for (const port of ports) {
+        for (let attempt = 0; attempt < attemptsPerPort; attempt++) {
+          for (const addr of targets) {
+            planned++;
+            try {
+              sock.send(pkt, port, addr, (err) => {
+                results.push({ port, addr, attempt, ok: !err, error: err?.message });
+              });
+            } catch (err) {
+              results.push({ port, addr, attempt, ok: false, error: err?.message });
+            }
+          }
         }
       }
-    }
-  });
+    });
+  } catch (err) {
+    results.push({ port: 0, addr: "bind", attempt: 0, ok: false, error: err?.message });
+  }
 
   return {
     // resolves once every send callback has fired (or 1.5s safety timeout)

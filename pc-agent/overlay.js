@@ -163,8 +163,8 @@ function spawnWindowsOverlay() {
   sweepStrays(false); // ensure no orphaned LABNEXUS window can stack
 
   const seatName = os.hostname().toUpperCase().replace(/[^A-Z0-9-]/g, "-");
-  const reason = xamlEscape(lockReason);
-  const msg = message ? xamlEscape(message) : "";
+  const reason = xamlEscape(lockReason).replace(/'/g, "''");
+  const msg = message ? xamlEscape(message).replace(/'/g, "''") : "";
 
   // -WindowStyle Hidden hides the powershell console flash
   const ps = `

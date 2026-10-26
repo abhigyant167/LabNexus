@@ -135,7 +135,7 @@ function pcCardHtml(pc) {
       <span class="dot ${pc.fresh ? "fresh" : "stale"}"></span>${pc.fresh ? "agent online" : "agent stale/missing"}
       <br>host: ${escapeHtml(pc.hostname || "?")}
       <br>ip: ${escapeHtml(pc.ip || "?")}
-      <br>${escapeHtml(grant)}
+      <br>${grant}
     </div>
   </div>`;
 }

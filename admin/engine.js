@@ -29,12 +29,16 @@ function evaluateAndDispatch() {
   }
 }
 
-// Per-PC FIFO command queues (in-memory; they die with the process in v1)
+// Per-PC FIFO command queues (in-memory; bounded to prevent unbounded memory growth)
 const commandQueues = {};
+const MAX_QUEUE_PER_PC = 50;
 
 function pushCommand(pcId, cmd) {
   commandQueues[pcId] = commandQueues[pcId] || [];
   commandQueues[pcId].push(cmd);
+  if (commandQueues[pcId].length > MAX_QUEUE_PER_PC) {
+    commandQueues[pcId].shift();
+  }
 }
 
 function popCommand(pcId) {

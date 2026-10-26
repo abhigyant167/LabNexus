@@ -554,10 +554,18 @@ function handleCommand(cmd) {
       if (overlay.isLocked()) overlay.showMessage(cmd.params?.text || "");
       else overlay.showToast(cmd.params?.text || "");
       break;
-    case "REBOOT":
-      console.log(`Rebooting in ${cmd.params?.delaySec ?? 10}s`);
-      exec("shutdown /r /t 10");
+    case "REBOOT": {
+      const delay = Math.max(0, Math.min(60, Number(cmd.params?.delaySec ?? 10)));
+      console.log(`Rebooting in ${delay}s`);
+      if (process.platform === "win32") {
+        exec(`shutdown /r /t ${delay}`);
+      } else if (process.platform === "linux") {
+        exec("systemctl reboot || shutdown -r now");
+      } else if (process.platform === "darwin") {
+        exec("osascript -e 'tell app \"System Events\" to restart'");
+      }
       break;
+    }
     default:
       console.log(`Unknown command: ${cmd.command}`);
   }

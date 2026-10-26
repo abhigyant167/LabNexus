@@ -60,8 +60,25 @@ const crypto = require("crypto");
 const sessions = new Map(); // token -> expiresAt
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12h
 
+function pruneExpiredSessions() {
+  const now = Date.now();
+  for (const [t, exp] of sessions.entries()) {
+    if (now > exp) sessions.delete(t);
+  }
+}
+
+function timingSafeCheck(input, target) {
+  if (typeof input !== "string" || typeof target !== "string") return false;
+  const a = Buffer.from(input);
+  const b = Buffer.from(target);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
 function login(password) {
-  if (password !== state.settings.adminPassword) return null;
+  pruneExpiredSessions();
+  const configuredPass = (process.env.ADMIN_PASSWORD || state.settings?.adminPassword || "admin123").trim();
+  if (!timingSafeCheck(password, configuredPass)) return null;
   const token = crypto.randomBytes(24).toString("hex");
   sessions.set(token, Date.now() + SESSION_TTL_MS);
   return token;

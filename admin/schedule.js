@@ -789,7 +789,8 @@ function imageFile(id) {
   // falls back to another class's picture. Only the no-id call may fall back.
   const img = id ? all.find((x) => x.id === String(id)) || null : all[0] || null;
   if (!img) return null;
-  const full = path.join(state.getDataDir(), img.file);
+  const safeName = path.basename(img.file);
+  const full = path.join(state.getDataDir(), safeName);
   if (!fs.existsSync(full)) return null;
   return { path: full, mime: img.mime, meta: img };
 }
@@ -817,7 +818,7 @@ function removeImage(id, by = "admin") {
   // No id: remove every picture (the "Remove all" path).
   const doomed = id ? all.filter((x) => x.id === String(id)) : all.slice();
   for (const img of doomed) {
-    try { fs.unlinkSync(path.join(dir, img.file)); } catch (_) {}
+    try { fs.unlinkSync(path.join(dir, path.basename(img.file))); } catch (_) {}
   }
   schedule.images = id ? all.filter((x) => x.id !== String(id)) : [];
   if (doomed.length) {

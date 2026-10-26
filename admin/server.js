@@ -435,7 +435,12 @@ app.post(
     if (!Buffer.isBuffer(req.body)) {
       return res.status(400).json({ error: "Send the image file as the raw request body (PNG, JPG, WEBP or GIF)." });
     }
-    const name = decodeURIComponent(req.headers["x-file-name"] || "timetable") || "timetable";
+    let name = "timetable";
+    try {
+      name = decodeURIComponent(req.headers["x-file-name"] || "timetable") || "timetable";
+    } catch (_) {
+      name = String(req.headers["x-file-name"] || "timetable").slice(0, 120);
+    }
     const r = schedule.saveImage({
       buffer: req.body,
       mime: String(req.headers["content-type"] || "").split(";")[0].trim(),
@@ -555,6 +560,16 @@ engine.startTicking(() => {
   engine.evaluateAndDispatch();
   if (changed) broadcastState();
 }, broadcastState);
+
+// --------------------------- global error handling ---------------------------
+
+app.use((err, _req, res, _next) => {
+  if (err?.type === "entity.parse.failed" || err instanceof SyntaxError) {
+    return res.status(400).json({ error: "request body is not valid JSON" });
+  }
+  console.error("Unhandled server error:", err.message);
+  res.status(500).json({ error: "internal server error" });
+});
 
 // --------------------------- start ---------------------------
 
