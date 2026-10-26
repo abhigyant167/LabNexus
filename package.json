@@ -6,6 +6,7 @@
   "main": "admin/server.js",
   "scripts": {
     "start": "node admin/server.js",
+    "dev": "node admin/server.js",
     "build": "node --check admin/server.js && node --check admin/launcher.js && node --check admin/web/app.js && node --check admin/web/wizard.js && node --check pc-agent/agent.js",
     "test": "node tools/integration-test.js"
   },

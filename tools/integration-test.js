@@ -1064,7 +1064,7 @@ async function run() {
   // ----------------------------------------------------------------
   // a server WITHOUT an AI key answers with a clear setup state
   // ----------------------------------------------------------------
-  await startServer({ OPENAI_API_KEY: "" });
+  await startServer({ OPENAI_API_KEY: "", GEMINI_API_KEY: "" });
   const freshCookie = await loginAsAdmin();
   await reqRaw("POST", "/api/schedule/image", {
     buffer: TEST_PNG, mime: "image/png", fileName: "timetable.png", cookie: freshCookie,
