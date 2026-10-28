@@ -17,6 +17,7 @@
 // ----------------------------------------------------------------
 
 const fs = require("fs");
+const path = require("path");
 const state = require("./state");
 const schedule = require("./schedule");
 
@@ -26,10 +27,7 @@ const DEFAULT_MODEL = "gpt-4o-mini";
 // list); the first one the endpoint accepts is used.
 const MODEL_PREFS = ["gpt-4o-mini", "gpt-4o", "gpt-4.1", "glm-4.5v", "glm-4v"];
 // A free GEMINI_API_KEY (Google AI Studio) works out of the box through
-// Google's OpenAI-compatible endpoint. Model reality (verified against a live
-// free account): 2.5 models are retired for NEW accounts (":is no longer
-// available"), so the list starts with the flash models that answer, and a
-// busy/retired model just pushes the extractor to the next candidate.
+// Google's OpenAI-compatible endpoint.
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai";
 const GEMINI_MODEL_PREFS = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"];
 const MAX_SLOTS = 80;
@@ -44,7 +42,22 @@ const DAY_ALIASES = {
   sun: 7, sunday: 7,
 };
 
+function loadEnvFiles() {
+  for (const envPath of [path.join(__dirname, "..", ".env"), path.join(__dirname, ".env")]) {
+    try {
+      const text = fs.readFileSync(envPath, "utf8");
+      for (const line of text.split(/\r?\n/)) {
+        if (/^\s*#/.test(line)) continue;
+        const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
+        if (!m) continue;
+        if (process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^"|"$/g, "");
+      }
+    } catch (_) {}
+  }
+}
+
 function apiConfig() {
+  loadEnvFiles();
   const openaiKey = (process.env.OPENAI_API_KEY || "").trim();
   const geminiKey = (process.env.GEMINI_API_KEY || "").trim();
   const baseOverride = (process.env.EXTRACT_API_BASE || "").trim();
@@ -123,9 +136,46 @@ function dayNumber(name) {
   return DAY_ALIASES[short] !== undefined ? DAY_ALIASES[short] : null;
 }
 
-// Turn the model's `days` map into validated view-shaped slots, skipping
-// anything broken and noting what was skipped.
-function parseSlots(modelJson, notes) {
+function parseExtractTime(val, refStartMins = null) {
+  if (typeof val === "number" && Number.isFinite(val)) return val;
+  const s = String(val ?? "").trim();
+  const m = /^(\d{1,2}):(\d{2})(?:\s*(am|pm))?$/i.exec(s);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = Number(m[2]);
+  if (min > 59) return null;
+  const mer = (m[3] || "").toLowerCase();
+  if (mer === "pm" && h < 12) h += 12;
+  else if (mer === "am" && h === 12) h = 0;
+  else if (!mer) {
+    // In college timetables, hours 1 to 7 without AM/PM are afternoon (PM)
+    if (h >= 1 && h <= 7) h += 12;
+    if (refStartMins !== null && (h * 60 + min) <= refStartMins && h < 12) {
+      h += 12;
+    }
+  }
+  if (h > 23) return null;
+  return h * 60 + min;
+}
+
+function parseRange(str) {
+  if (!str || typeof str !== "string") return null;
+  const parts = str.split(/\s*(?:[-–—~]|to)\s*/i);
+  if (parts.length === 2) {
+    const s = parseExtractTime(parts[0]);
+    const e = parseExtractTime(parts[1], s);
+    if (s !== null && e !== null && e > s) return { start: s, end: e };
+  }
+  return null;
+}
+
+function isLabSubject(label) {
+  if (!label) return false;
+  return /\b(lab|practical|workshop|hands[- ]on|project|seminar|node\s*js|studio)\b/i.test(label) ||
+         /<[-–—]+|[-–—]+>/i.test(label);
+}
+
+function extractRawRows(modelJson, notes) {
   if (!modelJson || typeof modelJson !== "object") {
     notes.push("The reply could not be read as a timetable.");
     return [];
@@ -133,61 +183,134 @@ function parseSlots(modelJson, notes) {
   if (Array.isArray(modelJson.note)) modelJson.notes = modelJson.note;
   if (Array.isArray(modelJson.notes)) notes.push(...modelJson.notes.map(String).filter(Boolean));
 
-  const days = modelJson.days && typeof modelJson.days === "object" ? modelJson.days : null;
-  if (!days) {
-    // Tolerate a flat array [{day:"Mon",...}, ...] without the days map.
-    if (Array.isArray(modelJson.periods) || Array.isArray(modelJson.slots)) {
-      return collect(Array.isArray(modelJson.periods) ? modelJson.periods : modelJson.slots, notes);
-    }
-    notes.push("The reply did not contain any day columns.");
-    return [];
-  }
   const out = [];
-  for (const [dayName, rows] of Object.entries(days)) {
-    if (!Array.isArray(rows)) continue;
-    const day = dayNumber(dayName);
-    if (day === null) {
-      notes.push(`Unrecognised day "${dayName}" was skipped.`);
-      continue;
-    }
-    for (const row of rows) out.push({ day, ...(row || {}) });
-  }
-  return dedupeValidate(out, notes);
-}
 
-function collect(rows, notes) {
-  const out = [];
-  for (const row of rows) {
-    const day = row?.day ? dayNumber(row.day) : null;
-    if (day === null) continue;
-    out.push({ day, ...(row || {}) });
+  // Shape 1: { days: { Mon: [...], Tue: [...] } }
+  if (modelJson.days && typeof modelJson.days === "object" && !Array.isArray(modelJson.days)) {
+    for (const [dayName, rows] of Object.entries(modelJson.days)) {
+      const day = dayNumber(dayName);
+      if (day === null) {
+        notes.push(`Unrecognised day "${dayName}" was skipped.`);
+        continue;
+      }
+      if (Array.isArray(rows)) {
+        for (const row of rows) out.push({ day, ...(row || {}) });
+      }
+    }
+    return out;
   }
-  return dedupeValidate(out, notes);
+
+  // Shape 2: { timetable: { Monday: { "9:10-10:10": "DBMS LAB", ... } } }
+  const table = modelJson.timetable || modelJson.schedule;
+  if (table && typeof table === "object" && !Array.isArray(table)) {
+    for (const [dayName, dayContent] of Object.entries(table)) {
+      const day = dayNumber(dayName);
+      if (day === null) continue;
+      if (Array.isArray(dayContent)) {
+        for (const row of dayContent) out.push({ day, ...(row || {}) });
+      } else if (dayContent && typeof dayContent === "object") {
+        for (const [timeKey, cellVal] of Object.entries(dayContent)) {
+          const label = typeof cellVal === "string" ? cellVal : (cellVal?.label || cellVal?.subject || "");
+          if (!isLabSubject(label)) continue;
+          const rng = parseRange(timeKey);
+          if (rng) {
+            out.push({ day, start: rng.start, end: rng.end, label });
+          } else {
+            out.push({ day, time: timeKey, label });
+          }
+        }
+      }
+    }
+    if (out.length) return out;
+  }
+
+  // Shape 3: flat array in periods, slots, lab_periods, labPeriods, or root array
+  const flat = Array.isArray(modelJson)
+    ? modelJson
+    : Array.isArray(modelJson.periods)
+    ? modelJson.periods
+    : Array.isArray(modelJson.slots)
+    ? modelJson.slots
+    : Array.isArray(modelJson.lab_periods)
+    ? modelJson.lab_periods
+    : Array.isArray(modelJson.labPeriods)
+    ? modelJson.labPeriods
+    : null;
+
+  if (flat) {
+    for (const row of flat) {
+      const day = row?.day ? dayNumber(row.day) : null;
+      if (day === null) continue;
+      out.push({ day, ...(row || {}) });
+    }
+    return out;
+  }
+
+  notes.push("The reply did not contain any day columns.");
+  return [];
 }
 
 function dedupeValidate(rows, notes) {
-  const seen = new Set();
-  const out = [];
+  const parsedRows = [];
   for (const row of rows) {
-    const start = schedule.parseHM(row?.start);
-    const end = schedule.parseHM(row?.end);
-    const label = sanitizeLabel(row?.label);
+    let start = null;
+    let end = null;
+
+    if (row.start !== undefined && row.end !== undefined) {
+      start = parseExtractTime(row.start);
+      end = parseExtractTime(row.end, start);
+    } else if (row.time || row.timing || row.timeslot) {
+      const rng = parseRange(row.time || row.timing || row.timeslot);
+      if (rng) {
+        start = rng.start;
+        end = rng.end;
+      }
+    }
+
+    const rawLabel = row?.label || row?.subject || row?.course || row?.name || row?.title || "";
+    const label = sanitizeLabel(rawLabel);
+
     if (start === null || end === null || end <= start || !label) {
-      if (row?.start || row?.label) {
-        notes.push(`Skipped a row that could not be read (${row?.day ?? "?"} ${row?.start ?? "?"}–${row?.end ?? "?"}).`);
+      if (row?.start || row?.label || row?.time || row?.subject) {
+        notes.push(`Skipped a row that could not be read (${row?.day ?? "?"} ${(row?.start || row?.time) ?? "?"}–${row?.end ?? "?"}).`);
       }
       continue;
     }
-    const key = `${row.day}|${start}|${end}|${label.toLowerCase()}`;
+    parsedRows.push({ day: row.day, start, end, label });
+  }
+
+  parsedRows.sort((a, b) => a.day - b.day || a.start - b.start || a.end - b.end);
+
+  // Merge contiguous slots on the same day for the exact same subject
+  const merged = [];
+  for (const r of parsedRows) {
+    const prev = merged[merged.length - 1];
+    if (
+      prev &&
+      prev.day === r.day &&
+      prev.label.toLowerCase() === r.label.toLowerCase() &&
+      r.start >= prev.end &&
+      r.start <= prev.end + 15
+    ) {
+      prev.end = Math.max(prev.end, r.end);
+    } else {
+      merged.push({ ...r });
+    }
+  }
+
+  const seen = new Set();
+  const out = [];
+  for (const s of merged) {
+    const key = `${s.day}|${s.start}|${s.end}|${s.label.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ day: row.day, start, end, label });
+    out.push(s);
     if (out.length >= schedule.MAX_SLOTS || out.length >= MAX_SLOTS) {
       notes.push(`Capped the extraction at ${Math.min(MAX_SLOTS, schedule.MAX_SLOTS)} periods.`);
       break;
     }
   }
-  out.sort((a, b) => a.day - b.day || a.start - b.start || a.end - b.end);
+
   return out.map((s) => ({
     day: s.day,
     start: schedule.fmtHM(s.start),
@@ -197,22 +320,29 @@ function dedupeValidate(rows, notes) {
   }));
 }
 
+// Turn whatever structure the model returned into validated view-shaped slots.
+function parseSlots(modelJson, notes) {
+  const rawRows = extractRawRows(modelJson, notes);
+  return dedupeValidate(rawRows, notes);
+}
+
 function buildPrompt(departmentLabel, className) {
   return [
     "You read photographs of college timetables and convert them to JSON.",
     departmentLabel ? `This lab serves the ${departmentLabel} department.` : "",
     className ? `This picture is the timetable of the class "${className}".` : "",
     className
-      ? `Every label you output must name that class/section, even if the cell text does not: write it as "<course> Lab - <class/section name>" (e.g. "DBMS Lab - ${className}") so periods from different classes never blur together.`
+      ? `Every label you output must name that class/section: write it as "<course> - ${className}" (e.g. "DBMS LAB - ${className}") so periods from different classes never blur together.`
       : "",
-    "From the weekly timetable picture, list ONLY periods that are LAB or PRACTICAL periods - theory/class periods do not use this lab and must be skipped.",
+    "From the weekly timetable picture, list ONLY periods that are LAB or PRACTICAL periods (including programming, hands-on, or periods spanning multiple slots) - theory periods do not use this lab and must be skipped.",
     "Reply with JSON exactly in this shape and nothing else:",
-    '{"days":{"Mon":[{"start":"09:00","end":"11:00","label":"DBMS Lab - Sec A + OS Lab - Sec B"}]},"notes":["anything unreadable or ambiguous"]}',
+    '{"days":{"Tue":[{"start":"09:10","end":"12:15","label":"DBMS LAB - Sec C"}]},"notes":[]}',
     "Rules:",
-    '- day keys: Mon Tue Wed Thu Fri Sat Sun (only days the lab is used)',
-    "- start/end are 24-hour HH:MM taken from the period times; if the picture only shows period numbers, use the timetable's own period boundaries.",
-    '- label is the course(s) and section(s) printed in the cell as plain text (e.g. "DBMS Lab - Sec A"); if a cell names two labs, join them with " + ".',
+    "- day keys: Mon Tue Wed Thu Fri Sat Sun (only days the lab is used)",
+    "- start/end MUST be 24-hour HH:MM (e.g. 09:10, 11:15, 12:15, 13:15, 14:00, 16:00). Remember 1:15 PM is 13:15, 2:00 PM is 14:00, 3:00 PM is 15:00, 4:00 PM is 16:00.",
     "- A lab spanning consecutive periods becomes ONE row covering the whole span.",
+    "- Do not span across lunch break: if a lab has periods before and after lunch break (e.g. 12:15-13:15 and 14:00-16:00), output them as separate rows so the lab locks during lunch.",
+    "- label is the course name with class/section.",
     "- notes is [] when everything was readable.",
   ].filter(Boolean).join("\n");
 }
@@ -231,8 +361,6 @@ async function fetchWithTimeout(url, options) {
 // otherwise ask /models and prefer helpers, falling back sensibly.
 async function resolveModel({ key, base, modelEnv, gemini }) {
   if (modelEnv) return [modelEnv];
-  // Google's compat /models needs a paid key probe to be useful and lists ids
-  // in `models/...` form, so for Gemini we go straight to the flash list.
   if (gemini) return GEMINI_MODEL_PREFS;
   try {
     const r = await fetchWithTimeout(`${base}/models`, {
@@ -330,23 +458,31 @@ async function extractFromImage(imageId) {
   const prompt = buildPrompt(departmentLabel, img.meta && img.meta.name);
   const candidates = modelEnv ? [modelEnv] : await resolveModel({ key, base, modelEnv, gemini });
 
-  // Try the candidates in order. A model the endpoint does not know is a fast
-  // rejection, so this costs nothing when the first candidate is right.
   let reply = null;
   let lastErr = null;
   for (const model of candidates) {
-    try {
-      reply = await callOnce({ key, base }, model, dataUrl, prompt);
-      break;
-    } catch (err) {
-      lastErr = err;
-      if (err.name === "AbortError") {
-        return { status: 504, error: "Reading the picture took too long. Try again (a smaller, well-lit photo also helps)." };
+    // Retry transient 503/network spikes
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        reply = await callOnce({ key, base }, model, dataUrl, prompt);
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (err.name === "AbortError") {
+          return { status: 504, error: "Reading the picture took too long. Try again (a smaller, well-lit photo also helps)." };
+        }
+        const status = err.status || 0;
+        if (status === 401 || status === 402 || status === 403 || status === 429) break;
+        if (status === 503 && attempt === 0) {
+          await new Promise((r) => setTimeout(r, 1500));
+          continue;
+        }
+        break;
       }
-      const status = err.status || 0;
-      // Auth / balance / rate problems are not model-specific: stop early.
-      if (status === 401 || status === 402 || status === 403 || status === 429) break;
     }
+    if (reply !== null) break;
+    const status = lastErr?.status || 0;
+    if (status === 401 || status === 402 || status === 403 || status === 429) break;
   }
 
   if (reply === null) {
@@ -377,4 +513,4 @@ async function extractFromImage(imageId) {
   };
 }
 
-module.exports = { extractFromImage, config };
+module.exports = { extractFromImage, config, parseSlots, buildPrompt };

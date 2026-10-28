@@ -448,7 +448,12 @@ app.post(
     });
     if (r.error) return res.status(r.status).json({ error: r.error });
     broadcastState();
-    res.json({ ok: true, image: r.image, note: "Keep this picture as the reference; the confirmed grid is what the lab actually follows." });
+    res.json({
+      ok: true,
+      image: r.image,
+      images: r.images,
+      note: "Keep this picture as the reference; the confirmed grid is what the lab actually follows.",
+    });
   }
 );
 

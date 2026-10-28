@@ -52,11 +52,15 @@ function minutesOfDay(date) {
 }
 
 function parseHM(value) {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(String(value ?? "").trim());
+  const m = /^(\d{1,2}):(\d{2})(?:\s*(am|pm))?$/i.exec(String(value ?? "").trim());
   if (!m) return null;
-  const h = Number(m[1]);
+  let h = Number(m[1]);
   const min = Number(m[2]);
-  if (h > 23 || min > 59) return null;
+  if (min > 59) return null;
+  const mer = (m[3] || "").toLowerCase();
+  if (mer === "pm" && h < 12) h += 12;
+  else if (mer === "am" && h === 12) h = 0;
+  if (h > 23) return null;
   return h * 60 + min;
 }
 

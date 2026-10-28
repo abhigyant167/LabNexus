@@ -11,3 +11,6 @@ admin/data/
 _old/
 pptxwork/
 *.zip
+LabNexus/
+~$*.docx
+*.tmp

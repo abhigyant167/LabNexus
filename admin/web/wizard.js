@@ -89,11 +89,15 @@
   }
 
   function parseHM(value) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(String(value ?? "").trim());
+    const m = /^(\d{1,2}):(\d{2})(?:\s*(am|pm))?$/i.exec(String(value ?? "").trim());
     if (!m) return null;
-    const h = Number(m[1]);
+    let h = Number(m[1]);
     const min = Number(m[2]);
-    if (h > 23 || min > 59) return null;
+    if (min > 59) return null;
+    const mer = (m[3] || "").toLowerCase();
+    if (mer === "pm" && h < 12) h += 12;
+    else if (mer === "am" && h === 12) h = 0;
+    if (h > 23) return null;
     return h * 60 + min;
   }
 
@@ -528,8 +532,13 @@
         return;
       }
       if (!r.ok) throw new Error(data.error || r.statusText);
-      S.images = Array.isArray(data.images) ? data.images : [...(S.images || [])];
-      S.image = data.image || null;
+      if (Array.isArray(data.images)) {
+        S.images = data.images;
+      } else if (data.image) {
+        const existing = (S.images || []).filter((x) => x.id !== data.image.id);
+        S.images = [...existing, data.image];
+      }
+      S.image = data.image || S.images[0] || null;
       renderGallery();
       const stored = data.image;
       setMsg(
@@ -929,6 +938,10 @@
     const startMins = parseHM(last.end);
     const day = Number(last.day) || 1;
     if (startMins === null) return { day, start: "09:00", end: "11:00" };
+    if (startMins >= 17 * 60) {
+      const nextDay = (day % 7) + 1;
+      return { day: nextDay, start: "09:00", end: "11:00" };
+    }
     const endMins = Math.min(startMins + 120, 23 * 60 + 59);
     if (endMins <= startMins) return { day, start: "09:00", end: "11:00" };
     return { day, start: fmtHM(startMins), end: fmtHM(endMins) };
