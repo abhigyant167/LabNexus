@@ -13,4 +13,11 @@ pptxwork/
 *.zip
 LabNexus/
 ~$*.docx
+~$*.pptx
 *.tmp
+
+# Scratch docs / temporary exports
+docs/_pptF/
+docs/ppt_mine.pptx
+docs/ppt_ref.pptx
+docs/~*

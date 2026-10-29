@@ -1,0 +1,6 @@
+{
+  "pcId": 1,
+  "token": "demo-agent-1",
+  "serverUrl": "",
+  "pollMs": 3000
+}

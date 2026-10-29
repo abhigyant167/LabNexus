@@ -13,7 +13,15 @@ const fs = require("fs");
 const path = require("path");
 const { exec } = require("child_process");
 const overlay = require("./overlay");
-const config = require("./config.json");
+let config = {};
+try {
+  config = require("./config.json");
+} catch (_) {
+  config = { pcId: 1, token: "demo-agent-1", serverUrl: "", pollMs: 3000 };
+  try {
+    fs.writeFileSync(path.join(__dirname, "config.json"), JSON.stringify(config, null, 2) + "\n");
+  } catch (_) {}
+}
 
 // ---------------- identity ----------------
 //
@@ -514,7 +522,7 @@ function failClosed() {
 
 let rediscovering = false;
 async function tryReDiscover() {
-  if (rediscovering) return;
+  if (config.serverUrl || rediscovering) return;
   rediscovering = true;
   try {
     const addr = await discoverServer(3000);
