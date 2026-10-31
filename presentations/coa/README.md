@@ -1,55 +1,59 @@
 # Binary Storage and Registers — COA theory presentation
 
-Two lengths of the same talk, both 16:9 with speaker notes on every slide:
+Two lengths of the same talk, both 16:9, plus a printable presenter script.
 
-| File | Slides | Use |
-|------|--------|-----|
-| **`Binary_Storage_and_Registers_8slides_COA.pptx`** | **8** | **the short version — main deliverable** |
-| `Binary_Storage_and_Registers_COA.pptx` | 16 | longer version, same content, more room per idea |
+| File | What it is |
+|------|------------|
+| **`Binary_Storage_and_Registers_8slides_COA.pptx`** | **8 slides — the main deliverable** |
+| **`Presenter_Script_8slides.docx`** | **word-for-word script + cheat sheet to hold while presenting** |
+| `Binary_Storage_and_Registers_COA.pptx` | longer 16-slide version if you get more time |
 
-Fill in `<Your Name>` / `<Roll No>` on the title slide and you are ready to present.
+## Presenting it even if you know nothing
 
-## The 8-slide version
+Three layers of help are built in:
 
-| # | Slide | Covers |
-|---|-------|--------|
-| 1 | Title | — |
-| 2 | What we will cover | agenda: six ideas |
-| 3 | Binary: two states, and 2ⁿ patterns | bit strip + weights, one byte in four bases, n-bit table, KB/MB/GB/TB |
-| 4 | A bit needs a circuit that can hold a state | SR latch, D flip-flop, DRAM cell, flip-flop vs DRAM trade-off |
-| 5 | A register is n flip-flops sharing one clock | 4-bit register diagram, CPU registers table, transfer notation |
-| 6 | Control: load, shift, and the shared bus | 2:1 mux load enable, shift register + timing table, tri-state bus |
-| 7 | Where registers sit, and one worked example | memory hierarchy bars + load/SHL/SHR/ROL on R1 = 0000 1101 |
-| 8 | Summary and questions | five takeaway points, four likely questions, sources |
+1. **A green "SAY THIS" band on every slide.** One plain sentence, printed on the slide
+   itself, in the least technical words possible. If your mind goes blank, read that
+   sentence and move on — it is the whole point of the slide.
+2. **Full script in the speaker notes.** In PowerPoint use *Slide Show → Presenter View* and
+   the notes appear on your screen only. Each notes page has: the one-liner, the word-for-word
+   lines, and an "if asked" answer.
+3. **`Presenter_Script_8slides.docx`.** The same script on paper: plain summary, one analogy,
+   the lines to say, the likely question, what to say next — plus a one-page cheat sheet of
+   every number and a timing plan.
 
-The 16-slide deck spreads the same material over: title, agenda, why binary, number bases,
-storage units, storage elements, register, transfer notation, CPU registers, load enable,
-shift registers, bus, memory hierarchy, worked example, summary, thank-you/sources.
+## The 8 slides
 
-## Editing
+| # | Slide | What you are really saying |
+|---|-------|----------------------------|
+| 1 | Title | Two questions: how is a bit kept, and where |
+| 2 | What we will cover | One ladder: bits → bit-holder → register → control → placement |
+| 3 | Binary: two states, and 2ⁿ patterns | A bit is ON/OFF; each extra bit doubles the values |
+| 4 | A bit needs a circuit that can hold a state | A flip-flop remembers by feeding its output back in |
+| 5 | A register is n flip-flops sharing one clock | Many flip-flops, updated together, named directly |
+| 6 | Control: load, shift, and the shared bus | A signal decides when to change; one driver at a time |
+| 7 | Where registers sit, and one worked example | Registers are fastest and smallest; then load/shift/rotate |
+| 8 | Summary and questions | Five sentences + four likely questions with answers |
 
-Both decks are generated. Edit the `.pptx` directly in PowerPoint, or change the builder and
-regenerate:
+Timing: ≈8 minutes of talking, leaving room for questions.
+
+## Editing / regenerating
 
 ```bash
-pip install python-pptx pillow
-python3 build_deck_8.py     # 8-slide deck
-python3 build_deck.py       # 16-slide deck
-python3 preview.py          # optional: PNG renders in preview/ for a visual check
+pip install python-pptx python-docx pillow
+python3 build_deck_8.py        # 8-slide deck   (+ reads script_8.py for the SAY THIS bands)
+python3 build_script_doc.py    # presenter script .docx
+python3 build_deck.py          # 16-slide deck
+python3 preview.py             # optional PNG check renders into preview/
 ```
 
-* `deckkit.py` — shared layout helpers (colours, measured text with auto-shrink, cards,
-  chips, tables, code blocks, wiring/arrows). Both builders import it.
-* `preview.py` — Pillow rasteriser used during authoring because there is no
-  PowerPoint/LibreOffice in the build environment. Checking tool only, not needed to present.
+* `script_8.py` — **the words**. Edit the `plain`, `analogy`, `script` and `if_asked`
+  fields here and re-run both builders; the slide band, the speaker notes and the paper
+  script all update together.
+* `deckkit.py` — shared drawing helpers (colours, measured text with auto-shrink, cards,
+  tables, wiring, the SAY THIS band).
+* `preview.py` — Pillow rasteriser used while authoring (no PowerPoint/LibreOffice in the
+  build environment). Checking tool only.
 
-## Content notes
-
-* Numbers follow Mano / Stallings: 2ⁿ patterns, 1 KB = 2¹⁰ B, DRAM refresh ≈ 64 ms,
-  flip-flop ≈ 6 transistors vs. a 1T1C DRAM cell.
-* The shift-register timing table starts from 1011 and shifts one position per clock, so the
-  table and the drawing agree.
-* The worked example uses R1 = 0000 1101 (= 13) and applies load, shift-left, shift-right and
-  rotate to the same eight flip-flops.
-* The last slide doubles as Q&A backup: four short answers to the questions an examiner is
-  most likely to ask.
+Numbers follow Mano / Stallings: 2ⁿ patterns, 1 KB = 2¹⁰ B, DRAM refresh ≈ 64 ms,
+flip-flop ≈ 6 transistors vs. a 1T1C DRAM cell.

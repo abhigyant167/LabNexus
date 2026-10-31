@@ -467,6 +467,18 @@ def section_tag(s, x, y, txt, color=ACCENT):
 
 
 
+def say_band(s, y, w=11.85, x=0.75, h=0.52):
+    """Light band with the one plain-words sentence to say on this slide."""
+    from script_8 import SLIDES  # local import: script is content, not layout
+    info = next(e for e in SLIDES if e["n"] == s._arena_slide_no)
+    rect(s, x, y, w, h, fill=RGBColor(0xE8, 0xF3, 0xF1))
+    rect(s, x, y, 0.055, h, fill=ACCENT)
+    text(s, x + 0.22, y + (h - 0.34) / 2, w - 0.42, 0.34,
+         [[("SAY THIS:  ", {"bold": True, "color": ACCENT_D, "size": 10.5}),
+           (info["plain"], {"color": INK, "size": 12.5})]],
+         size=12.5, line_spacing=1.06, shrink=False)
+
+
 def save(path):
     prs.save(path)
     print(f"saved: {path}")

@@ -13,19 +13,31 @@ from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 
+from script_8 import SLIDES as SCRIPT
 from deckkit import (  # noqa: F401
     prs, SW, SH, INK, INK_SOFT, MUTED, ACCENT, ACCENT_D, AMBER,
     PANEL, PANEL_2, LINE, WHITE, DARK_BG, DARK_PNL, CODE_BG, CODE_FG,
     BODY, MONO, HEAD, RGBColor, I, slide, text, bullets, header, footer,
     notes, arrow, wire, dot, chip, card, table, code_block, bit_strip,
-    section_tag, rect, save, no_shadow,
+    section_tag, rect, save, no_shadow, say_band,
 )
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                    "Binary_Storage_and_Registers_8slides_COA.pptx")
 
 # ============================================================ 1 · TITLE
-s = slide()
+_slide_no = 0
+
+
+def new_slide():
+    global _slide_no
+    _slide_no += 1
+    sh = slide()
+    sh._arena_slide_no = _slide_no
+    return sh
+
+
+s = new_slide()
 rect(s, 0, 0, SW, SH, fill=DARK_BG)
 grid_bits = ["1", "0", "1", "1", "0", "0", "1", "0", "1", "1", "0", "1"]
 for i, b in enumerate(grid_bits):
@@ -49,16 +61,19 @@ text(s, 0.9, 5.58, 5.2, 1.05,
      size=13.5, line_spacing=1.5)
 text(s, 0.9, 6.72, 6.0, 0.30, "Theory Presentation  \u00b7  8 slides", size=11,
      color=RGBColor(0x6E, 0x86, 0x92))
-notes(s, """
-Good morning. My topic is Binary Storage and Registers.
-Two questions drive the whole presentation: how does a machine that only understands
-ON and OFF keep a value, and where does it keep that value while it is working on it?
-The answer to the first is the binary storage cell; the answer to the second is the
-register. Everything else in the CPU is built on top of these two ideas.
-""")
+notes(s, "\n".join([
+    "== SAY THIS (one line) ==",
+    SCRIPT[0]["plain"],
+    "",
+    "== FULL SCRIPT ==",
+    *("- " + line for line in SCRIPT[0]["script"]),
+    "",
+    "== IF ASKED ==",
+    SCRIPT[0]["if_asked"] or "No expected question on this slide.",
+]))
 
 # ============================================================ 2 · WHAT WE COVER
-s = slide()
+s = new_slide()
 y = header(s, "What we will cover", kicker="Agenda",
            subtitle="Six ideas, in the order they build on each other.")
 items = [
@@ -79,48 +94,52 @@ for num, ttl, sub, col in items:
          shrink=False)
     text(s, 6.35, cy + 0.12, 6.20, 0.30, sub, size=12.5, color=INK_SOFT, shrink=False)
     if num != "06":
-        rect(s, 0.78, cy + 0.72, 11.80, 0.008, fill=RGBColor(0xE9, 0xEF, 0xF2))
-    cy += 0.80
+        rect(s, 0.78, cy + 0.68, 11.80, 0.008, fill=RGBColor(0xE9, 0xEF, 0xF2))
+    cy += 0.74
+say_band(s, 6.16)
 footer(s, 2)
-notes(s, """
-Here is the route, and it is one straight line: bits, then the circuit that stores a
-bit, then many of those circuits in a row (a register), then how registers are
-controlled and moved into each other, and finally where registers fit in the memory
-hierarchy, with one worked example. Every later slide reuses the one before it.
-""")
+notes(s, "\n".join([
+    "== SAY THIS (one line) ==",
+    SCRIPT[1]["plain"],
+    "",
+    "== FULL SCRIPT ==",
+    *("- " + line for line in SCRIPT[1]["script"]),
+    "",
+    "== IF ASKED ==",
+    SCRIPT[1]["if_asked"] or "No expected question on this slide.",
+]))
 
 # ============================================================ 3 · BINARY
-s = slide()
+s = new_slide()
 y = header(s, "Binary: two states, and 2\u207f patterns",
            kicker="01 \u00b7 Representation",
            subtitle="Hardware is cheapest when it only has to tell two states apart \u2014 and n bits then give exactly 2\u207f values.")
 
 text(s, 0.75, y + 0.10, 5.75, 0.30, "One byte = 8 bits = 2 hex digits",
      size=14, bold=True, color=INK, font=HEAD, shrink=False)
-bit_strip(s, 0.75, y + 0.52, cell=0.46, h=0.46, bits="10110100", size=15,
+bit_strip(s, 0.75, y + 0.48, cell=0.44, h=0.44, bits="10110100", size=14,
           labels=["b7", "b6", "b5", "b4", "b3", "b2", "b1", "b0"])
-text(s, 0.75, y + 1.14, 4.4, 0.24, "MSB \u2190 position weights \u2192 LSB", size=9.5,
+text(s, 0.75, y + 1.04, 4.4, 0.24, "MSB \u2190 position weights \u2192 LSB", size=9.5,
      color=MUTED, shrink=False)
 
-text(s, 0.75, y + 1.50, 5.75, 0.26, "WEIGHTS 128 \u00b7 64 \u00b7 32 \u00b7 16 \u00b7 8 \u00b7 4 \u00b7 2 \u00b7 1",
+text(s, 0.75, y + 1.54, 5.75, 0.26, "WEIGHTS 128 \u00b7 64 \u00b7 32 \u00b7 16 \u00b7 8 \u00b7 4 \u00b7 2 \u00b7 1",
      size=9, bold=True, color=ACCENT, font=HEAD, shrink=False)
-text(s, 0.75, y + 1.78, 5.75, 0.62,
+text(s, 0.75, y + 1.82, 5.75, 0.40,
      [[("128 + 32 + 16 + 4 = 180", {"color": INK_SOFT}),
        ("     1011 0100 \u2192 ", {"color": MUTED}),
        ("0xB4", {"bold": True, "font": MONO, "color": ACCENT_D})]],
      size=11.5, shrink=False)
-text(s, 0.75, y + 2.34, 5.75, 0.55,
-     "A 0 or 1 is a voltage range, not an exact level: below ~0.8 V reads 0, above "
-     "~2.0 V reads 1, so small noise changes nothing.", size=10.5, color=MUTED,
-     line_spacing=1.12)
+text(s, 0.75, y + 2.24, 5.75, 0.44,
+     "A 0 or 1 is a voltage range, not an exact level, so small electrical noise "
+     "cannot change it.", size=10, color=MUTED, line_spacing=1.1)
 
-table(s, 0.75, y + 3.00, 5.75,
+table(s, 0.75, y + 2.76, 5.75,
       [["Base", "Name", "Digits", "10110100\u2082 is"],
        ["2", "Binary", "0, 1", "10110100"],
        ["8", "Octal", "0 \u2013 7", "264"],
        ["10", "Decimal", "0 \u2013 9", "180"],
        ["16", "Hex", "0 \u2013 9, A \u2013 F", "0xB4"]],
-      [0.72, 1.42, 1.85, 1.76], size=11.5, row_h=0.335, mono_cols=(0, 3))
+      [0.72, 1.42, 1.85, 1.76], size=11.5, row_h=0.31, mono_cols=(0, 3))
 
 # right: 2^n table + units
 text(s, 6.95, y + 0.10, 5.60, 0.30, "How many values fit in n bits?", size=14,
@@ -132,43 +151,43 @@ table(s, 6.95, y + 0.50, 5.60,
        ["16", "65,536", "0 \u2013 65,535", "half-word"],
        ["32", "4.29 \u00d7 10\u2079", "0 \u2013 2\u00b3\u00b2\u22121", "word / IPv4"],
        ["64", "1.84 \u00d7 10\u00b9\u2079", "0 \u2013 2\u2076\u2074\u22121", "long / address"]],
-      [0.62, 1.40, 1.85, 1.73], size=11, row_h=0.325, mono_cols=(0, 1, 2))
+      [0.62, 1.40, 1.85, 1.73], size=11, row_h=0.31, mono_cols=(0, 1, 2))
 
-text(s, 6.95, y + 2.52, 5.60, 0.28, "Storage units are powers of two", size=14,
+text(s, 6.95, y + 2.40, 5.60, 0.28, "Storage units are powers of two", size=14,
      bold=True, color=INK, font=HEAD, shrink=False)
 units = [("1 KB", "2\u00b9\u2070", "1,024 B"), ("1 MB", "2\u00b2\u2070", "1,048,576 B"),
          ("1 GB", "2\u00b3\u2070", "1.07 \u00d7 10\u2079 B"), ("1 TB", "2\u2074\u2070", "1.10 \u00d7 10\u00b9\u00b2 B")]
 ux = 6.95
 for name, power, val in units:
-    rect(s, ux, y + 2.90, 1.31, 0.94, fill=PANEL, line=LINE,
+    rect(s, ux, y + 2.78, 1.31, 0.90, fill=PANEL, line=LINE,
          shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.09)
-    text(s, ux, y + 3.00, 1.31, 0.26, name, size=11.5, bold=True, color=ACCENT_D,
+    text(s, ux, y + 2.88, 1.31, 0.26, name, size=11.5, bold=True, color=ACCENT_D,
          align=PP_ALIGN.CENTER, shrink=False)
-    text(s, ux, y + 3.26, 1.31, 0.24, power, size=10.5, bold=True, color=INK,
+    text(s, ux, y + 3.14, 1.31, 0.24, power, size=10.5, bold=True, color=INK,
          align=PP_ALIGN.CENTER, font=MONO, shrink=False)
-    text(s, ux + 0.05, y + 3.52, 1.21, 0.24, val, size=8, color=MUTED,
+    text(s, ux + 0.05, y + 3.38, 1.21, 0.24, val, size=8, color=MUTED,
          align=PP_ALIGN.CENTER, shrink=False)
     ux += 1.43
-text(s, 6.95, y + 4.00, 5.60, 0.52,
+text(s, 6.95, y + 3.80, 5.60, 0.44,
      [[("Why 1024 and not 1000?  ", {"bold": True, "color": ACCENT_D}),
        ("k address bits select 2\u1d4f locations, so capacity lands on powers of two.",
         {"color": INK_SOFT})]],
      size=10.5, line_spacing=1.12, shrink=False)
+say_band(s, 6.16)
 footer(s, 3)
-notes(s, """
-Why binary at all? Because a transistor that is either fully off or fully on is cheap,
-fast and immune to small noise. A single bit answers one yes/no question; with n bits
-we get two to the n patterns - 256 for a byte, 4.3 billion for 32 bits, which is why
-IPv4 ran out of addresses.
-The same eight bits can be written in binary, octal, decimal or hex. Hex exists purely
-for humans: four bits are one hex digit, so a byte is always two characters, which is
-why memory dumps and addresses are shown that way.
-And the units are powers of two for the same reason: k address bits give 2 to the k
-locations. That is why 1 KB is 1024 bytes and not 1000.
-""")
+notes(s, "\n".join([
+    "== SAY THIS (one line) ==",
+    SCRIPT[2]["plain"],
+    "",
+    "== FULL SCRIPT ==",
+    *("- " + line for line in SCRIPT[2]["script"]),
+    "",
+    "== IF ASKED ==",
+    SCRIPT[2]["if_asked"] or "No expected question on this slide.",
+]))
 
 # ============================================================ 4 · STORAGE ELEMENTS
-s = slide()
+s = new_slide()
 y = header(s, "A bit needs a circuit that can hold a state",
            kicker="02 \u00b7 Storage elements",
            subtitle="Any stable two-state circuit is a bit cell. Three you should know:")
@@ -265,35 +284,34 @@ text(s, bxx3 + 0.26, byy + 2.62, 3.32, 0.24, "Needs refreshing every ~64 ms",
      size=9.5, bold=True, color=AMBER, font=MONO, shrink=False)
 
 # comparison strip
-rect(s, 0.75, byy + 3.10, 11.85, 1.24, fill=PANEL_2)
-text(s, 0.98, byy + 3.20, 11.40, 0.24, "THE TRADE-OFF", size=9, bold=True,
+rect(s, 0.75, byy + 3.06, 11.85, 1.10, fill=PANEL_2)
+text(s, 0.98, byy + 3.14, 11.40, 0.24, "THE TRADE-OFF", size=9, bold=True,
      color=ACCENT, font=HEAD, shrink=False)
-text(s, 0.98, byy + 3.50, 11.40, 0.26,
+text(s, 0.98, byy + 3.40, 11.40, 0.26,
      [[("Flip-flop:  ", {"bold": True, "color": ACCENT_D}),
        ("~6 transistors per bit, no refresh, fast \u2014 the right choice inside the CPU.",
         {"color": INK_SOFT})]],
      size=10.5, shrink=False)
-text(s, 0.98, byy + 3.90, 11.40, 0.26,
+text(s, 0.98, byy + 3.72, 11.40, 0.26,
      [[("DRAM cell:  ", {"bold": True, "color": AMBER}),
        ("1 transistor + 1 capacitor, needs refresh \u2014 the right choice for gigabytes.",
         {"color": INK_SOFT})]],
      size=10.5, shrink=False)
+say_band(s, 6.16)
 footer(s, 4)
-notes(s, """
-This slide answers the physical question: what actually remembers a bit?
-The SR latch is two NOR gates feeding each other - a circuit that argues itself into a
-stable answer and keeps it. Cheap, but level-sensitive.
-The D flip-flop is the workhorse: it samples D only on the rising clock edge, so the
-whole design has a predictable rhythm. When we say a register is n flip-flops, this is
-the box we mean.
-The DRAM cell is one transistor plus one capacitor: charge means 1. It is tiny, so you
-get gigabits per chip, but the charge leaks and must be refreshed every few tens of
-milliseconds. That trade-off - six transistors for speed, one transistor for density -
-is the whole reason the memory hierarchy exists.
-""")
+notes(s, "\n".join([
+    "== SAY THIS (one line) ==",
+    SCRIPT[3]["plain"],
+    "",
+    "== FULL SCRIPT ==",
+    *("- " + line for line in SCRIPT[3]["script"]),
+    "",
+    "== IF ASKED ==",
+    SCRIPT[3]["if_asked"] or "No expected question on this slide.",
+]))
 
 # ============================================================ 5 · REGISTER
-s = slide()
+s = new_slide()
 y = header(s, "A register is n flip-flops sharing one clock",
            kicker="03 \u00b7 The register",
            subtitle="It stores one binary word and is read or written as a unit \u2014 selected by name, not by address.")
@@ -333,14 +351,14 @@ wire(s, rx, br_y, rx, br_y + 0.14, color=MUTED, w=1.1)
 wire(s, rx + 3 * (cw + GAP) + cw, br_y, rx + 3 * (cw + GAP) + cw, br_y + 0.14,
      color=MUTED, w=1.1)
 wire(s, rx, br_y + 0.14, rx + 3 * (cw + GAP) + cw, br_y + 0.14, color=MUTED, w=1.1)
-text(s, rx - 0.05, br_y + 0.22, 4.85, 0.26,
+text(s, rx - 0.40, br_y + 0.18, 5.55, 0.24,
      "one 4-bit register \u2014 value stored = Q\u2083Q\u2082Q\u2081Q\u2080", size=10,
      bold=True, color=INK, align=PP_ALIGN.CENTER, shrink=False)
 
-bullets(s, 1.05, ry + 2.98, 4.85, [
-    ("One clock, one update. ", "All bits change together, so the word is never half-written."),
-    ("Width = flip-flop count. ", "8-bit = 8 FFs, 64-bit = 64 FFs."),
-], size=11.5, gap=0.52)
+bullets(s, 1.05, ry + 2.92, 4.85, [
+    ("One clock, one update. ", "All bits change together, so a word is never half-written."),
+    ("Width = flip-flop count. ", "An 8-bit register is 8 flip-flops."),
+], size=11, gap=0.46)
 
 # right: CPU registers
 text(s, 6.55, y + 0.10, 6.00, 0.30, "Registers you will meet inside a CPU", size=14,
@@ -358,31 +376,27 @@ table(s, 6.55, y + 0.50, 6.00,
 
 text(s, 6.55, y + 3.18, 6.00, 0.26, "Register transfer notation", size=13.5,
      bold=True, color=INK, font=HEAD, shrink=False)
-code_block(s, 6.55, y + 3.56, 6.00, 0.60, ["R2 \u2190 R1    copy     R3 \u2190 R1 + R2    add"],
-           size=12, shrink=False)
-text(s, 6.55, y + 4.28, 6.00, 0.62,
+code_block(s, 6.55, y + 3.50, 6.00, 0.56, ["R2 \u2190 R1    copy     R3 \u2190 R1 + R2    add"],
+           size=11.5, shrink=False)
+text(s, 6.55, y + 4.16, 6.00, 0.40,
      [[("Read right to left: ", {"bold": True}),
-       ("the source is copied, the destination overwritten. It only happens when its "
-        "control signal is 1, e.g. if T3 = 1 then R2 \u2190 R1.", {"color": INK_SOFT})]],
-     size=10, line_spacing=1.12, shrink=False)
+       ("the source is copied, the destination overwritten.", {"color": INK_SOFT})]],
+     size=10, shrink=False)
+say_band(s, 6.16)
 footer(s, 5)
-notes(s, """
-Now we scale a bit up. A register is just n flip-flops side by side sharing one clock
-line. Because they all sample the same edge, the word is written atomically - you never
-read half the new value and half the old. An 8-bit register is eight flip-flops; a
-64-bit register is sixty-four.
-Crucially, a register has no address: it is selected by name in the instruction, which
-is why it costs one cycle instead of a memory round trip.
-The table is the cast of characters: the PC makes a program a sequence, the IR holds what
-is being decoded, MAR and MDR are the only route to memory, the accumulator is the
-classic one-operand design, the stack pointer makes calls possible, and the status
-register makes branches possible. All of them are the same hardware underneath.
-Register transfer notation is how we write data movement: R2 arrow R1 means copy R1 into
-R2, and it executes only when its control signal is asserted.
-""")
+notes(s, "\n".join([
+    "== SAY THIS (one line) ==",
+    SCRIPT[4]["plain"],
+    "",
+    "== FULL SCRIPT ==",
+    *("- " + line for line in SCRIPT[4]["script"]),
+    "",
+    "== IF ASKED ==",
+    SCRIPT[4]["if_asked"] or "No expected question on this slide.",
+]))
 
 # ============================================================ 6 · CONTROL
-s = slide()
+s = new_slide()
 y = header(s, "Control: load, shift, and the shared bus",
            kicker="04 \u00b7 Control",
            subtitle="A register only does something when a control signal says so \u2014 and only one output may drive the bus at a time.")
@@ -458,49 +472,30 @@ table(s, 6.95, y + 1.74, 3.05,
 
 text(s, 6.95, y + 3.06, 5.60, 0.28, "(c) One bus, one driver", size=13, bold=True,
      color=INK, font=HEAD, shrink=False)
-text(s, 6.95, y + 3.38, 5.60, 0.50,
-     "Tri-state buffers have a third output state, high-Z. So many registers can share "
-     "one bus \u2014 but exactly one enable may be active.", size=10, color=INK_SOFT,
+text(s, 6.95, y + 3.34, 5.60, 0.44,
+     "Tri-state buffers have a third output state, high-Z, so many registers can share "
+     "one bus \u2014 but only one enable may be active.", size=10, color=INK_SOFT,
      line_spacing=1.1, shrink=False)
-# small bus drawing
-regs = [("R1", y + 3.96), ("R2", y + 4.36)]
-for nm, ry3 in regs:
-    rect(s, 6.95, ry3, 0.86, 0.30, fill=WHITE, line=ACCENT_D, lw=1.0,
-         shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.12)
-    text(s, 6.95, ry3 + 0.05, 0.86, 0.22, nm, size=9, bold=True, color=ACCENT_D,
-         align=PP_ALIGN.CENTER, font=MONO, shrink=False)
-    arrow(s, 7.83, ry3 + 0.15, 8.44, ry3 + 0.15, color=ACCENT_D, w=1.0)
-wire(s, 8.46, y + 3.92, 8.46, y + 4.70, color=ACCENT_D, w=2.6)
-dot(s, 8.46, y + 3.96 + 0.15, d=0.08, color=ACCENT_D)
-dot(s, 8.46, y + 4.36 + 0.15, d=0.08, color=ACCENT_D)
-arrow(s, 8.46, y + 4.30, 9.10, y + 4.30, color=ACCENT, w=1.2)
-text(s, 9.16, y + 4.18, 1.60, 0.24, "R3 \u2190 bus", size=9, bold=True, color=ACCENT,
-     font=MONO, shrink=False)
-text(s, 9.60, y + 3.86, 2.95, 0.72,
-     "Only the enabled register drives the line; the others float at high-Z.",
-     size=9.5, color=MUTED, line_spacing=1.1, shrink=False)
-rect(s, 9.55, y + 4.60, 3.00, 0.56, fill=PANEL_2)
-text(s, 9.70, y + 4.70, 2.72, 0.40,
-     [[("Two enabled at once = ", {"bold": True, "color": AMBER}),
-       ("contention, a short circuit.", {"color": INK_SOFT})]],
-     size=8.5, line_spacing=1.05, shrink=False)
+rect(s, 6.95, y + 3.92, 5.60, 0.62, fill=PANEL_2)
+text(s, 7.16, y + 4.02, 5.20, 0.44,
+     [[("Two registers enabled at once \u2192 contention, ", {"color": INK_SOFT}),
+       ("a short circuit, not just a wrong value.", {"bold": True, "color": AMBER})]],
+     size=10, line_spacing=1.1, shrink=False)
+say_band(s, 6.16)
 footer(s, 6)
-notes(s, """
-Three control ideas, all on one slide.
-Parallel load: a two-to-one multiplexer sits in front of every flip-flop. With Load
-high it passes the external data; with Load low it feeds the flip-flop's own output
-back, so the register holds. That is why every real processor has write-enable signals.
-Shift: connect each Q to the next D and bits march one position per clock. Left shift
-doubles, right shift halves, and a rotate brings the bit that fell off one end back in
-at the other, so nothing is lost.
-Bus: if every register had its own path to every other register the wire count grows as n
-squared. Instead all registers share one bus through tri-state buffers, which can be
-0, 1 or high impedance. Exactly one may be enabled - two at once is bus contention, a
-short circuit rather than just a wrong value.
-""")
+notes(s, "\n".join([
+    "== SAY THIS (one line) ==",
+    SCRIPT[5]["plain"],
+    "",
+    "== FULL SCRIPT ==",
+    *("- " + line for line in SCRIPT[5]["script"]),
+    "",
+    "== IF ASKED ==",
+    SCRIPT[5]["if_asked"] or "No expected question on this slide.",
+]))
 
 # ============================================================ 7 · HIERARCHY + EXAMPLE
-s = slide()
+s = new_slide()
 y = header(s, "Where registers sit, and one worked example",
            kicker="05 \u00b7 Placement and example",
            subtitle="Registers are the fastest, smallest storage in the machine \u2014 here is why, and what that buys us.")
@@ -513,22 +508,22 @@ bars = [
 ]
 by = y + 0.12
 for name, meta, w, col in bars:
-    rect(s, 0.75, by, w, 0.74, fill=col, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
-         radius=0.09)
-    text(s, 0.96, by + 0.10, w - 0.34, 0.28, name, size=12, bold=True, color=WHITE,
+    rect(s, 0.75, by, w, 0.68, fill=col, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
+         radius=0.10)
+    text(s, 0.96, by + 0.08, w - 0.30, 0.28, name, size=11.5, bold=True, color=WHITE,
          shrink=False)
-    text(s, 0.96, by + 0.40, w - 0.34, 0.24, meta, size=8.5,
+    text(s, 0.96, by + 0.36, w - 0.30, 0.24, meta, size=8.5,
          color=RGBColor(0xE6, 0xF2, 0xF1), shrink=False)
-    by += 0.84
+    by += 0.76
 text(s, 0.75, by + 0.02, 5.90, 0.26, "\u2190 faster + costlier       larger + cheaper \u2192",
      size=8.5, color=MUTED, shrink=False)
-rect(s, 0.75, by + 0.40, 5.90, 0.86, fill=PANEL_2)
-text(s, 0.96, by + 0.52, 5.50, 0.24, "WHY NOT ALL REGISTERS?", size=8.5, bold=True,
+rect(s, 0.75, by + 0.30, 5.90, 0.82, fill=PANEL_2)
+text(s, 0.96, by + 0.40, 5.50, 0.24, "WHY NOT ALL REGISTERS?", size=8.5, bold=True,
      color=ACCENT, font=HEAD, shrink=False)
-text(s, 0.96, by + 0.76, 5.50, 0.44,
-     "A flip-flop is ~6 transistors per bit; a DRAM cell is 1 + 1 capacitor. Same bit, "
-     "roughly six times the area.", size=9.5, color=INK_SOFT, line_spacing=1.08,
-     shrink=False)
+text(s, 0.96, by + 0.64, 5.50, 0.44,
+     "A flip-flop is ~6 transistors per bit; a DRAM cell is 1 + 1 capacitor, so "
+     "registers would be ~6\u00d7 the area.", size=9.5, color=INK_SOFT,
+     line_spacing=1.08, shrink=False)
 
 # example, right
 ops = [
@@ -560,33 +555,33 @@ text(s, 7.05, y + 3.62, 5.55, 1.00,
       [("Rotate ", {"bold": True, "color": ACCENT_D}),
        ("returns the escaping bit, so no 1 is ever lost.", {"color": INK_SOFT})]],
      size=10, line_spacing=1.15, space_after=6)
-rect(s, 7.05, y + 4.78, 5.55, 0.46, fill=PANEL_2)
-text(s, 7.24, y + 4.88, 5.20, 0.28,
-     [[("Same eight flip-flops every time \u2014 ", {"color": INK_SOFT}),
-       ("only the control signals changed.", {"bold": True, "color": ACCENT_D})]],
-     size=10, shrink=False)
+say_band(s, 6.16)
 footer(s, 7)
-notes(s, """
-Placement first. The bit in a register and the bit in RAM are logically identical but
-physically very different. A register is flip-flops inside the CPU, selected by name,
-read in a fraction of a cycle. Cache is SRAM at a few nanoseconds, main memory is DRAM
-at tens of nanoseconds, disk is microseconds to milliseconds. We cannot make everything
-registers because a flip-flop costs about six transistors per bit against one transistor
-and a capacitor for DRAM - you could never fit gigabytes that way.
-Then the example, all on the same eight flip-flops. R1 holds 0000 1101, which is 13.
-A load overwrites the whole word at once. A left shift gives 0001 1010 = 26, a right
-shift gives 0000 0110 = 6 with the remainder lost, and a rotate gives 1000 0110 = 134
-without losing a single bit. Same hardware every time; only the control signals changed.
-""")
+notes(s, "\n".join([
+    "== SAY THIS (one line) ==",
+    SCRIPT[6]["plain"],
+    "",
+    "== FULL SCRIPT ==",
+    *("- " + line for line in SCRIPT[6]["script"]),
+    "",
+    "== IF ASKED ==",
+    SCRIPT[6]["if_asked"] or "No expected question on this slide.",
+]))
 
 # ============================================================ 8 · SUMMARY / Q&A
-s = slide()
+s = new_slide()
 rect(s, 0, 0, SW, SH, fill=DARK_BG)
 rect(s, 0.9, 0.86, 0.62, 0.07, fill=ACCENT)
-text(s, 0.9, 1.02, 7.4, 0.52, "Summary and questions", size=34, bold=True,
+text(s, 0.9, 0.98, 7.4, 0.58, "Summary and questions", size=34, bold=True,
      color=WHITE, font=HEAD, shrink=False)
-text(s, 0.9, 1.62, 7.4, 0.30, "Five sentences that carry the whole topic.", size=14,
+text(s, 0.9, 1.62, 5.30, 0.30, "Five sentences that carry the topic.", size=13,
      color=RGBColor(0xB6, 0xC7, 0xCF), shrink=False)
+rect(s, 0.9, 1.96, 6.15, 0.50, fill=DARK_PNL, shape=MSO_SHAPE.ROUNDED_RECTANGLE,
+     radius=0.16)
+text(s, 1.06, 2.07, 5.85, 0.28,
+     [[("SAY THIS:  ", {"bold": True, "color": RGBColor(0x71, 0xC8, 0xC1), "size": 9.5}),
+       ("binary, the bit cell, the register, the switches.", {"size": 11})]],
+     size=11, color=WHITE, shrink=False)
 
 pts = [
     ("01", "Binary is a hardware decision.",
@@ -600,7 +595,7 @@ pts = [
     ("05", "Registers top the hierarchy.",
      "Fast and small because they are flip-flops; memory is big and slow by design."),
 ]
-py = 2.06
+py = 2.66
 for num, lead, rest in pts:
     text(s, 0.90, py, 0.52, 0.26, num, size=11, bold=True,
          color=RGBColor(0x71, 0xC8, 0xC1), font=HEAD, shrink=False)
@@ -608,7 +603,7 @@ for num, lead, rest in pts:
          shrink=False)
     text(s, 1.52, py + 0.26, 5.60, 0.42, rest, size=10,
          color=RGBColor(0x9F, 0xB6, 0xC0), line_spacing=1.1, shrink=False)
-    py += 0.88
+    py += 0.80
 
 text(s, 7.55, 2.02, 4.90, 0.26, "LIKELY QUESTIONS", size=9.5, bold=True,
      color=RGBColor(0x71, 0xC8, 0xC1), font=HEAD, shrink=False)
@@ -640,14 +635,15 @@ text(s, 7.55, qy + 0.40, 4.90, 1.00,
      size=8.5, color=WHITE, line_spacing=1.12, space_after=4, shrink=False)
 text(s, 0.90, 6.90, 6.6, 0.30, "Thank you \u2014 questions are welcome.", size=12,
      bold=True, color=RGBColor(0x71, 0xC8, 0xC1), shrink=False)
-notes(s, """
-To close. One: binary is not a convention, it is a hardware decision, and n bits give
-two to the n patterns. Two: a bit survives because of a bistable circuit. Three: a
-register is that circuit repeated n times with a common clock, so updates are atomic.
-Four: control signals decide what happens - load to write, shift to move, tri-state to
-share a bus. Five: that is exactly why the hierarchy looks the way it does.
-On the right are the four questions I would expect, with short answers. Thank you -
-I am happy to take questions.
-""")
+notes(s, "\n".join([
+    "== SAY THIS (one line) ==",
+    SCRIPT[7]["plain"],
+    "",
+    "== FULL SCRIPT ==",
+    *("- " + line for line in SCRIPT[7]["script"]),
+    "",
+    "== IF ASKED ==",
+    SCRIPT[7]["if_asked"] or "No expected question on this slide.",
+]))
 
 save(OUT)
