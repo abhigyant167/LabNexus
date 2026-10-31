@@ -24,3 +24,8 @@ docs/~*
 
 # Presentation preview renders (regenerate with presentations/coa/preview.py)
 presentations/coa/preview/
+
+presentations/coa/preview8/
+
+# Python caches from the deck builders
+__pycache__/

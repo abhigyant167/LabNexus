@@ -96,7 +96,7 @@ def draw_text_frame(d, sh, px, py, pw, ph):
         align = p.alignment if p.alignment is not None else PP_ALIGN.LEFT
         # wrap
         if not runs:
-            lines.append(([], align, maxsize * 1.22 * ls))
+            lines.append(([], align, maxsize * 1.22 * ls * DPI / 72.0))
             continue
         cur, curw = [], 0.0
         tokens = []
@@ -145,8 +145,12 @@ def draw_text_frame(d, sh, px, py, pw, ph):
 
 
 def _split_keep(txt):
+    """Split a run's text into word chunks, keeping spaces; '\n' becomes its own
+    token BETWEEN segments only (never at the end, which would add a phantom line)."""
     out = []
-    for seg in txt.split("\n"):
+    for i, seg in enumerate(txt.split("\n")):
+        if i:
+            out.append("\n")
         buf = ""
         for ch in seg:
             buf += ch
@@ -155,7 +159,6 @@ def _split_keep(txt):
                 buf = ""
         if buf:
             out.append(buf)
-        out.append("\n")
     return out
 
 

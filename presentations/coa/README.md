@@ -1,52 +1,55 @@
 # Binary Storage and Registers — COA theory presentation
 
-**Deliverable:** `Binary_Storage_and_Registers_COA.pptx` (16 slides, 16:9, speaker notes on every slide).
+Two lengths of the same talk, both 16:9 with speaker notes on every slide:
 
-Open it in PowerPoint, fill in `<Your Name>` / `<Roll No>` on slide 1, and you are ready to present.
+| File | Slides | Use |
+|------|--------|-----|
+| **`Binary_Storage_and_Registers_8slides_COA.pptx`** | **8** | **the short version — main deliverable** |
+| `Binary_Storage_and_Registers_COA.pptx` | 16 | longer version, same content, more room per idea |
 
-## Slide map (≈14–15 minutes)
+Fill in `<Your Name>` / `<Roll No>` on the title slide and you are ready to present.
 
-| # | Slide | Section |
-|---|-------|---------|
+## The 8-slide version
+
+| # | Slide | Covers |
+|---|-------|--------|
 | 1 | Title | — |
-| 2 | What we will cover | Agenda |
-| 3 | Why binary? What can one bit hold? | 01 Representation |
-| 4 | Writing the same value in different bases | 01 Representation |
-| 5 | From a bit to a terabyte | 01 Representation |
-| 6 | Where does one bit physically live? (SR latch / D flip-flop / DRAM cell) | 02 Storage elements |
-| 7 | A register is n flip-flops sharing one clock | 03 The register |
-| 8 | Register transfer notation: R1 ← R2 | 03 The register |
-| 9 | Registers you will meet inside a CPU | 03 The register |
-| 10 | Controlling a register: the load enable | 04 Control |
-| 11 | Shift registers: moving bits, not copying them | 04 Control |
-| 12 | Many registers, one bus: tri-state buffers | 04 Control |
-| 13 | Where registers sit: the memory hierarchy | 05 Placement |
-| 14 | Worked example: one 8-bit register | 06 Example |
-| 15 | Summary | Recap |
-| 16 | Thank you — sources + likely questions | — |
+| 2 | What we will cover | agenda: six ideas |
+| 3 | Binary: two states, and 2ⁿ patterns | bit strip + weights, one byte in four bases, n-bit table, KB/MB/GB/TB |
+| 4 | A bit needs a circuit that can hold a state | SR latch, D flip-flop, DRAM cell, flip-flop vs DRAM trade-off |
+| 5 | A register is n flip-flops sharing one clock | 4-bit register diagram, CPU registers table, transfer notation |
+| 6 | Control: load, shift, and the shared bus | 2:1 mux load enable, shift register + timing table, tri-state bus |
+| 7 | Where registers sit, and one worked example | memory hierarchy bars + load/SHL/SHR/ROL on R1 = 0000 1101 |
+| 8 | Summary and questions | five takeaway points, four likely questions, sources |
+
+The 16-slide deck spreads the same material over: title, agenda, why binary, number bases,
+storage units, storage elements, register, transfer notation, CPU registers, load enable,
+shift registers, bus, memory hierarchy, worked example, summary, thank-you/sources.
 
 ## Editing
 
-The deck is generated, so you can either edit the `.pptx` directly in PowerPoint, or change
-`build_deck.py` and regenerate:
+Both decks are generated. Edit the `.pptx` directly in PowerPoint, or change the builder and
+regenerate:
 
 ```bash
 pip install python-pptx pillow
-python3 build_deck.py            # writes the .pptx
-python3 preview.py               # optional: renders preview/slide-NN.png for a visual check
+python3 build_deck_8.py     # 8-slide deck
+python3 build_deck.py       # 16-slide deck
+python3 preview.py          # optional: PNG renders in preview/ for a visual check
 ```
 
-`preview.py` is a small Pillow rasteriser used during authoring because there is no
-PowerPoint/LibreOffice in the build environment. It is only a checking tool — not needed to
-present.
+* `deckkit.py` — shared layout helpers (colours, measured text with auto-shrink, cards,
+  chips, tables, code blocks, wiring/arrows). Both builders import it.
+* `preview.py` — Pillow rasteriser used during authoring because there is no
+  PowerPoint/LibreOffice in the build environment. Checking tool only, not needed to present.
 
 ## Content notes
 
-* Numbers used throughout are the standard ones from Mano / Stallings: 2ⁿ patterns, 1 KB =
-  2¹⁰ bytes, DRAM refresh ≈ 64 ms, flip-flop ≈ 6 transistors vs. 1T1C DRAM cell.
-* Slide 11's timing table starts from 1011 and shifts right one position per clock, so the
-  table and the text agree.
-* Slide 14 uses R1 = 0000 1101 (= 13) and then shows load / shift-left / shift-right / rotate
-  on the same eight flip-flops.
-* Slide 16 doubles as your Q&A backup — four short answers to the questions an examiner is
+* Numbers follow Mano / Stallings: 2ⁿ patterns, 1 KB = 2¹⁰ B, DRAM refresh ≈ 64 ms,
+  flip-flop ≈ 6 transistors vs. a 1T1C DRAM cell.
+* The shift-register timing table starts from 1011 and shifts one position per clock, so the
+  table and the drawing agree.
+* The worked example uses R1 = 0000 1101 (= 13) and applies load, shift-left, shift-right and
+  rotate to the same eight flip-flops.
+* The last slide doubles as Q&A backup: four short answers to the questions an examiner is
   most likely to ask.
