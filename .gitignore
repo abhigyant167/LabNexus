@@ -21,3 +21,6 @@ docs/_pptF/
 docs/ppt_mine.pptx
 docs/ppt_ref.pptx
 docs/~*
+
+# Presentation preview renders (regenerate with presentations/coa/preview.py)
+presentations/coa/preview/
